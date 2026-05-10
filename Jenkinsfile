@@ -1,37 +1,59 @@
 pipeline {
     agent any
 
+    triggers {
+        githubPush()
+    }
+
+    environment {
+        GITHUB_TOKEN = credentials('github-token')
+    }
+
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/ahmedsamyabdullah/service-app.git'
+                echo 'Checking out source code from GitHub...'
+                checkout scm
+            }
+        }
+
+        stage('Verify Tools') {
+            steps {
+                echo 'Checking PHP and PHPUnit versions...'
+                sh 'php -v'
+                sh 'phpunit --version'
+            }
+        }
+
+        stage('Verify GitHub Secret') {
+            steps {
+                echo 'Checking that GitHub token exists without printing it...'
+                sh '''
+                    if [ -z "$GITHUB_TOKEN" ]; then
+                        echo "GitHub token is missing"
+                        exit 1
+                    else
+                        echo "GitHub token is configured correctly"
+                    fi
+                '''
             }
         }
 
         stage('Run Unit Tests') {
             steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    sh '/usr/local/bin/phpunit --log-junit results.xml tests/'
-                }
-            }
-        }
-
-        stage('Display Results') {
-            steps {
-                junit 'results.xml'
+                echo 'Running PHPUnit tests...'
+                sh 'phpunit --bootstrap tests/bootstrap.php tests'
             }
         }
     }
 
     post {
-        always {
-            echo 'Pipeline job finished.'
-        }
         success {
-            echo 'Congratulations! All tests passed successfully.'
+            echo 'Build succeeded. All unit tests passed.'
         }
+
         failure {
-            echo 'The code failed the tests! Please check the Test Result trend for details.'
+            echo 'Build failed. Check the PHPUnit error above.'
         }
     }
 }
