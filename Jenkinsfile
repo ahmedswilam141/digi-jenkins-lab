@@ -42,7 +42,7 @@ pipeline {
         stage('Run Unit Tests') {
             steps {
                 echo 'Running PHPUnit tests...'
-                sh 'phpunit --bootstrap tests/bootstrap.php tests'
+                sh 'phpunit --do-not-cache-result --bootstrap tests/bootstrap.php tests'
             }
         }
     }
